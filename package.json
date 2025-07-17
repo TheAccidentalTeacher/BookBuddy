@@ -1,0 +1,27 @@
+{
+  "name": "ai-fiction-editing-tool",
+  "version": "1.0.0",
+  "description": "AI-powered fiction editing tool with accessibility features and debugging console",
+  "main": "server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm start",
+    "build": "npm run install-all && cd client && npm run build && cd ../server && npm run build:copy",
+    "start": "cd server && npm start",
+    "install-all": "npm install && cd server && npm install && cd ../client && npm install",
+    "deploy": "npm run build && npm start",
+    "railway:build": "npm run build",
+    "railway:start": "npm start"
+  },
+  "keywords": ["ai", "fiction", "editing", "accessibility", "writing"],
+  "author": "BookBuddy Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
