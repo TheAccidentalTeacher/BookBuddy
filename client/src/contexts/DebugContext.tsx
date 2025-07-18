@@ -153,13 +153,14 @@ export function DebugProvider({ children }: { children: React.ReactNode }) {
     // Check for missing form labels
     const inputs = document.querySelectorAll('input:not([aria-label]):not([aria-labelledby])');
     inputs.forEach(input => {
-      const label = document.querySelector(`label[for="${input.id}"]`);
-      if (!label && input.type !== 'hidden' && input.type !== 'submit') {
+      const inputElement = input as HTMLInputElement;
+      const label = document.querySelector(`label[for="${inputElement.id}"]`);
+      if (!label && inputElement.type !== 'hidden' && inputElement.type !== 'submit') {
         issues.push({
           type: 'missing-label',
           severity: 'error',
-          message: `Input missing label: ${input.outerHTML}`,
-          element: input,
+          message: `Input missing label: ${inputElement.outerHTML}`,
+          element: inputElement,
         });
       }
     });

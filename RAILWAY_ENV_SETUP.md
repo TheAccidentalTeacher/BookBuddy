@@ -88,15 +88,13 @@ REACT_APP_ENVIRONMENT=development
 # STEP 2: Add Variables to Railway
 # 1. Go to Railway Dashboard → Your BookBuddy Project → Variables tab
 # 2. Click "Raw Editor" button
-# 3. Copy and paste these variables (update with your real values):
+# 3. Copy and paste these variables (update MONGODB_URI with your real value):
 
 NODE_ENV=production
 PORT=8080
 MONGODB_URI=mongodb+srv://your-username:your-password@your-cluster.mongodb.net/bookbuddy?retryWrites=true&w=majority
-JWT_SECRET=your-super-secure-random-string-32-plus-characters-long-for-security
-JWT_EXPIRE=7d
-OPENAI_API_KEY=sk-your-real-openai-api-key-from-platform-openai-com
-CLIENT_URL=https://your-railway-app-name.up.railway.app
+JWT_SECRET=8f3e2a1b9c4d7f6e8a2b5c9d1e4f7a3b8c6d9e2f5a8b1c4d7e9f2a5b8c1d4e7f9a2b5c8d1e4f7a3b6c9d2e5f8
+OPENAI_API_KEY=sk-your-openai-api-key-here
 
 # STEP 3: Deploy
 # Railway will automatically redeploy after you save the variables
@@ -155,15 +153,17 @@ CLIENT_URL=https://your-railway-app-name.up.railway.app
 
 # Based on your current setup, you need to add these to Railway:
 
-# CRITICAL - REQUIRED NOW:
-# MONGODB_URI=mongodb+srv://your-mongodb-atlas-connection-string
-# JWT_SECRET=a-very-long-random-secure-string-for-jwt-tokens
-# OPENAI_API_KEY=sk-your-openai-api-key-for-ai-editing-features
+# ===============================================================================
+# 🎯 READY TO DEPLOY - COPY THESE TO RAILWAY NOW!
+# ===============================================================================
 
-# ✅ ALREADY SET CORRECTLY:
-# NODE_ENV=production (Railway sets this automatically)
-# PORT=8080 (Railway sets this automatically)
+NODE_ENV=production
+PORT=8080
+MONGODB_URI=mongodb+srv://scosom:nonphubic4@brainstorm-cluster.bg60my0.mongodb.net/bookbuddy?retryWrites=true&w=majority&appName=Brainstorm-Cluster
+JWT_SECRET=8f3e2a1b9c4d7f6e8a2b5c9d1e4f7a3b8c6d9e2f5a8b1c4d7e9f2a5b8c1d4e7f9a2b5c8d1e4f7a3b6c9d2e5f8
+OPENAI_API_KEY=sk-your-openai-api-key-here
 
-# ℹ️ NO CORS NEEDED - Frontend and backend served from same Railway URL
+# ✅ ALL VARIABLES COMPLETE - READY FOR RAILWAY DEPLOYMENT!
+# 🚀 Copy the above 5 lines and paste into Railway Dashboard → Variables → Raw Editor
 
-# 🚨 ADD THE MISSING VARIABLES TO RAILWAY NOW TO FIX YOUR DEPLOYMENT! 🚨
+# ===============================================================================

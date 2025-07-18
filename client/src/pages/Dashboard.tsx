@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { useAuth } from '../../contexts/AuthContext';
-import { useDebug } from '../../contexts/DebugContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useDebug } from '../contexts/DebugContext';
 
 interface ChapterSummary {
   id: string;

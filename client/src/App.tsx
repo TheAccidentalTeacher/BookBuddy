@@ -8,9 +8,6 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import NewChapter from './pages/NewChapter';
-import Chapter from './pages/Chapter';
-import Settings from './pages/Settings';
 import Help from './pages/Help';
 import DebugConsole from './components/Debug/DebugConsole';
 
@@ -57,9 +54,6 @@ function App() {
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard" element={<Navigate to="/" replace />} />
-            <Route path="/new-chapter" element={<NewChapter />} />
-            <Route path="/chapter/:id" element={<Chapter />} />
-            <Route path="/settings" element={<Settings />} />
             <Route path="/help" element={<Help />} />
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="/register" element={<Navigate to="/" replace />} />
