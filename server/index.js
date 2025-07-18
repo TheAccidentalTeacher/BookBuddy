@@ -1,6 +1,5 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
@@ -25,11 +24,7 @@ app.use(helmet({
   },
 }));
 
-// CORS configuration
-app.use(cors({
-  origin: process.env.CLIENT_URL || true,
-  credentials: true,
-}));
+// No CORS needed - frontend and backend served from same Railway URL
 
 // Rate limiting
 const limiter = rateLimit({
