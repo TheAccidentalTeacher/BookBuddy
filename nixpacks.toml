@@ -1,8 +1,16 @@
 [phases.setup]
 nixPkgs = ['nodejs_18']
 
+[phases.install]
+cmds = ['npm run install-all']
+
 [phases.build]
-cmds = ['npm run build']
+cmds = [
+  'ls -la client/public/',
+  'npm run build:client',
+  'npm run build:copy',
+  'ls -la server/public/'
+]
 
 [phases.start]
 cmd = 'npm start'
