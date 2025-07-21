@@ -7,7 +7,7 @@ yarn-error.log*
 # Build outputs
 build/
 dist/
-public/
+server/public/
 
 # Environment files
 .env
