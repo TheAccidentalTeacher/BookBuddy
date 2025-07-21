@@ -10,46 +10,41 @@ function Layout({ children }: LayoutProps) {
 
   const navigation = [
     { name: 'Home', href: '/', icon: '🏠' },
-    { name: 'Dashboard', href: '/dashboard', icon: '�' },
+    { name: 'Dashboard', href: '/dashboard', icon: '📊' },
+    { name: 'New Chapter', href: '/new-chapter', icon: '📝' },
+    { name: 'All Chapters', href: '/chapters', icon: '📚' },
+    { name: 'Settings', href: '/settings', icon: '⚙️' },
     { name: 'Help', href: '/help', icon: '❓' },
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <Link 
-            to="/"
-            className="flex items-center gap-2 text-xl font-bold text-blue-600 no-underline hover:text-blue-700"
-          >
-            <span>📖</span>
-            <span>BookBuddy</span>
+    <div className="min-h-screen flex">
+      {/* Sidebar */}
+      <aside className="w-64 bg-gray-900 text-white">
+        <div className="p-4">
+          <Link to="/" className="text-2xl font-bold text-white hover:text-gray-300 no-underline">
+            📚 BookBuddy
           </Link>
-          
-          {/* Simple Navigation */}
-          <nav className="flex items-center gap-6">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  <span>{item.icon}</span>
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
         </div>
-      </header>
+        
+        <nav className="mt-8">
+          {navigation.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`flex items-center gap-3 px-4 py-3 text-white hover:bg-gray-800 transition-colors no-underline ${
+                  isActive ? 'bg-gray-800 border-l-4 border-blue-500' : ''
+                }`}
+              >
+                <span className="text-xl">{item.icon}</span>
+                <span>{item.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
 
       {/* Main Content */}
       <main className="flex-1 bg-gray-50">
