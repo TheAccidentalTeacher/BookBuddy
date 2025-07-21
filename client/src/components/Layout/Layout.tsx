@@ -68,7 +68,7 @@ function Layout({ children }: LayoutProps) {
 
         {/* Navigation Links */}
         <div className="flex-1 p-4">
-          <ul className="space-y-2" role="list">
+          <ul className="space-y-2">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href || 
                              (item.href === '/dashboard' && location.pathname === '/');
