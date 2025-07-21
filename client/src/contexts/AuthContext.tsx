@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer } from 'react';
 
 interface User {
   id: string;
@@ -18,12 +18,7 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
-type AuthAction =
-  | { type: 'AUTH_START' }
-  | { type: 'AUTH_SUCCESS'; payload: { user: User; token: string } }
-  | { type: 'AUTH_FAILURE' }
-  | { type: 'LOGOUT' }
-  | { type: 'UPDATE_USER'; payload: Partial<User> };
+type AuthAction = { type: 'UPDATE_USER'; payload: Partial<User> };
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
@@ -34,50 +29,31 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Mock user for single-user mode (Alana Terry)
+const mockUser: User = {
+  id: 'alana-terry',
+  username: 'Alana Terry',
+  email: 'alana@example.com',
+  settings: {
+    fontSize: 'medium',
+    colorScheme: 'light',
+    lineSpacing: 'normal',
+  },
+};
+
 const initialState: AuthState = {
-  user: null,
-  token: localStorage.getItem('token'),
+  user: mockUser,
+  token: 'mock-token',
   isLoading: false,
-  isAuthenticated: false,
+  isAuthenticated: true,
 };
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
-    case 'AUTH_START':
-      return {
-        ...state,
-        isLoading: true,
-      };
-    case 'AUTH_SUCCESS':
-      localStorage.setItem('token', action.payload.token);
-      return {
-        ...state,
-        user: action.payload.user,
-        token: action.payload.token,
-        isLoading: false,
-        isAuthenticated: true,
-      };
-    case 'AUTH_FAILURE':
-      localStorage.removeItem('token');
-      return {
-        ...state,
-        user: null,
-        token: null,
-        isLoading: false,
-        isAuthenticated: false,
-      };
-    case 'LOGOUT':
-      localStorage.removeItem('token');
-      return {
-        ...state,
-        user: null,
-        token: null,
-        isAuthenticated: false,
-      };
     case 'UPDATE_USER':
       return {
         ...state,
-        user: state.user ? { ...state.user, ...action.payload } : null,
+        user: state.user ? { ...state.user, ...action.payload } : state.user,
       };
     default:
       return state;
@@ -87,98 +63,17 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Check if user is logged in on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          dispatch({ type: 'AUTH_START' });
-          const response = await fetch('/api/auth/me', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            dispatch({
-              type: 'AUTH_SUCCESS',
-              payload: { user: data.user, token },
-            });
-          } else {
-            dispatch({ type: 'AUTH_FAILURE' });
-          }
-        } catch (error) {
-          console.error('Auth check failed:', error);
-          dispatch({ type: 'AUTH_FAILURE' });
-        }
-      }
-    };
-
-    checkAuth();
-  }, []);
-
+  // Simple mock functions for single-user mode
   const login = async (email: string, password: string) => {
-    try {
-      dispatch({ type: 'AUTH_START' });
-
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        dispatch({
-          type: 'AUTH_SUCCESS',
-          payload: { user: data.user, token: data.token },
-        });
-      } else {
-        dispatch({ type: 'AUTH_FAILURE' });
-        throw new Error(data.message || 'Login failed');
-      }
-    } catch (error) {
-      dispatch({ type: 'AUTH_FAILURE' });
-      throw error;
-    }
+    return Promise.resolve();
   };
 
   const register = async (username: string, email: string, password: string) => {
-    try {
-      dispatch({ type: 'AUTH_START' });
-
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, email, password }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        dispatch({
-          type: 'AUTH_SUCCESS',
-          payload: { user: data.user, token: data.token },
-        });
-      } else {
-        dispatch({ type: 'AUTH_FAILURE' });
-        throw new Error(data.message || 'Registration failed');
-      }
-    } catch (error) {
-      dispatch({ type: 'AUTH_FAILURE' });
-      throw error;
-    }
+    return Promise.resolve();
   };
 
   const logout = () => {
-    dispatch({ type: 'LOGOUT' });
+    // No-op for single user mode
   };
 
   const updateUser = (updates: Partial<User>) => {
