@@ -20,5 +20,6 @@
         "tab.inactiveBackground": "#1e1e1e",
         "editorGroupHeader.tabsBackground": "#1a1a1a",
         "breadcrumb.background": "#1a1a1a"
-    }
+    },
+    "git.ignoreLimitWarning": true
 }
