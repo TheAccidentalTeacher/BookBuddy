@@ -6,10 +6,13 @@ class AIService {
   constructor() {
     this.useMockAPI = process.env.OPENAI_API_KEY === 'mock' || !process.env.OPENAI_API_KEY;
     
+    console.log('AIService initialized with mock API:', this.useMockAPI); // Debug log
+    
     if (!this.useMockAPI) {
       this.openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY,
       });
+      console.log('OpenAI client initialized'); // Debug log
     } else {
       console.log('Using mock AI responses for development');
     }

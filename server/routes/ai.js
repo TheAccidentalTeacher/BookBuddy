@@ -26,12 +26,16 @@ const COMMON_WORDS = new Set([
 // @access  Private
 router.post('/process-chapter', auth, async (req, res) => {
   try {
+    console.log('Processing chapter request received'); // Debug log
     const { text, preserveFormatting = true } = req.body;
     const userId = req.user.id;
 
     if (!text || typeof text !== 'string') {
+      console.log('Invalid text provided:', typeof text); // Debug log
       return res.status(400).json({ message: 'Text is required' });
     }
+
+    console.log('Text length:', text.length); // Debug log
 
     // Get or create user data store
     if (!userDataStore.has(userId)) {
@@ -318,9 +322,17 @@ Return your response as JSON with:
 
     let aiResult;
     try {
-      aiResult = JSON.parse(aiResponse.choices[0].message.content);
+      const rawResponse = aiResponse.choices[0].message.content;
+      console.log('Raw AI response:', rawResponse.substring(0, 200) + '...'); // Log first 200 chars for debugging
+      
+      // Try to extract JSON from response if it's wrapped in other text
+      const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
+      const jsonContent = jsonMatch ? jsonMatch[0] : rawResponse;
+      
+      aiResult = JSON.parse(jsonContent);
     } catch (parseError) {
       console.error('AI response parsing error:', parseError);
+      console.error('Raw response causing error:', aiResponse.choices[0].message.content);
       // Fallback processing
       aiResult = await fallbackProcessing(text);
     }
