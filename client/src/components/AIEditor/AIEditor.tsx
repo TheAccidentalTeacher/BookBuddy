@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Editor, EditorState, RichUtils, convertToRaw, convertFromRaw } from 'draft-js';
+import React, { useState, useCallback, useRef } from 'react';
+import { Editor, EditorState, RichUtils, Modifier } from 'draft-js';
 import { stateToHTML } from 'draft-js-export-html';
 import { stateFromHTML } from 'draft-js-import-html';
 import toast from 'react-hot-toast';
@@ -12,20 +12,71 @@ interface AIEditorProps {
 }
 
 interface Correction {
-  type: 'typo' | 'repetition' | 'consistency' | 'awkward';
   original: string;
-  suggestion?: string;
-  position: number;
+  corrected: string;
+  type: 'typo' | 'spelling' | 'punctuation' | 'quotation';
+  position: { start: number; end: number };
+  confidence: number;
+  accepted?: boolean;
+}
+
+interface AwkwardPhrasing {
+  phrase: string;
+  suggestion: string;
   reason: string;
+  position: { start: number; end: number };
+  confidence: number;
+  accepted?: boolean;
+}
+
+interface DialogueSection {
+  text: string;
+  fullText: string;
+  attribution: string;
+  position: { start: number; end: number };
+  quote: string;
+  type: 'dialogue';
+}
+
+interface Analysis {
+  corrections: Correction[];
+  repetitions: Array<{
+    word: string;
+    positions: Array<{ start: number; end: number; position: number }>;
+    distance: number;
+    type: 'repetition';
+    reason: string;
+  }>;
+  awkwardPhrasing: AwkwardPhrasing[];
+  dialogue: {
+    sections: DialogueSection[];
+    count: number;
+    averageLength: number;
+  };
+  names: Array<{
+    name: string;
+    type: 'person' | 'place' | 'other';
+    confidence: number;
+    positions: Array<{ start: number; end: number }>;
+  }>;
+  statistics: {
+    wordCount: number;
+    characterCount: number;
+    sentenceCount: number;
+    paragraphCount: number;
+    dialogueRatio: number;
+  };
 }
 
 interface AIResponse {
   correctedText: string;
-  corrections: Correction[];
-  summary: string;
-  repetitions: Array<{ word: string; positions: number[] }>;
-  characterNames: string[];
-  placeNames: string[];
+  analysis: Analysis;
+  tokenUsage?: {
+    prompt: number;
+    completion: number;
+    total: number;
+  };
+  processingTime: number;
 }
 
 function AIEditor({ content, onChange, onSave }: AIEditorProps) {
@@ -39,8 +90,8 @@ function AIEditor({ content, onChange, onSave }: AIEditorProps) {
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [corrections, setCorrections] = useState<Correction[]>([]);
+  const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [summary, setSummary] = useState('');
-  const [highlightedRanges, setHighlightedRanges] = useState<Array<{ start: number; end: number; type: string }>>([]);
   
   const editorRef = useRef<Editor>(null);
 
@@ -84,43 +135,72 @@ function AIEditor({ content, onChange, onSave }: AIEditorProps) {
       const aiResponse: AIResponse = await response.json();
       
       // Update editor with corrected text
-      const correctedContentState = stateFromHTML(aiResponse.correctedText);
-      const correctedEditorState = EditorState.createWithContent(correctedContentState);
-      setEditorState(correctedEditorState);
+      if (aiResponse.correctedText) {
+        const correctedContentState = stateFromHTML(aiResponse.correctedText);
+        const correctedEditorState = EditorState.createWithContent(correctedContentState);
+        setEditorState(correctedEditorState);
+        onChange(aiResponse.correctedText, correctedEditorState);
+      }
       
-      // Set corrections and summary
-      setCorrections(aiResponse.corrections);
-      setSummary(aiResponse.summary);
+      // Set analysis and corrections
+      setAnalysis(aiResponse.analysis);
+      setCorrections(aiResponse.analysis?.corrections || []);
       
-      // Highlight repetitions and issues
-      highlightIssues(aiResponse);
+      // Highlight issues in the text
+      if (aiResponse.analysis) {
+        highlightIssues(aiResponse.analysis);
+      }
       
-      toast.success(`Found ${aiResponse.corrections.length} corrections`);
+      // Create summary from statistics
+      const stats = aiResponse.analysis?.statistics;
+      const summaryText = stats 
+        ? `Analysis: ${stats.wordCount} words, ${stats.sentenceCount} sentences, ${stats.dialogueRatio}% dialogue. Found ${aiResponse.analysis.corrections.length} corrections, ${aiResponse.analysis.repetitions.length} repetitions, and ${aiResponse.analysis.awkwardPhrasing.length} awkward phrases.`
+        : 'Text processed successfully.';
+      setSummary(summaryText);
       
+      toast.success(`AI processing complete! Found ${aiResponse.analysis?.corrections.length || 0} improvements`);
+
     } catch (error) {
       console.error('AI processing error:', error);
       toast.error('Failed to process text with AI');
     } finally {
       setIsProcessing(false);
     }
-  }, [editorState]);
-
-  // Highlight repetitions and issues in the text
-  const highlightIssues = (aiResponse: AIResponse) => {
+  }, [editorState, onChange]);  // Highlight repetitions and issues in the text
+  const highlightIssues = (analysis: Analysis) => {
     const ranges: Array<{ start: number; end: number; type: string }> = [];
     
+    // Add correction highlights
+    analysis.corrections.forEach(correction => {
+      ranges.push({
+        start: correction.position.start,
+        end: correction.position.end,
+        type: 'correction'
+      });
+    });
+    
     // Add repetition highlights
-    aiResponse.repetitions.forEach(rep => {
+    analysis.repetitions.forEach(rep => {
       rep.positions.forEach(pos => {
         ranges.push({
-          start: pos,
-          end: pos + rep.word.length,
+          start: pos.start,
+          end: pos.end,
           type: 'repetition'
         });
       });
     });
-    
-    setHighlightedRanges(ranges);
+
+    // Add awkward phrasing highlights
+    analysis.awkwardPhrasing.forEach(awkward => {
+      ranges.push({
+        start: awkward.position.start,
+        end: awkward.position.end,
+        type: 'awkward'
+      });
+    });
+
+    // TODO: Apply highlights to editor (would need custom entity implementation)
+    console.log('Issue ranges:', ranges);
   };
 
   // Handle keyboard shortcuts
@@ -136,6 +216,56 @@ function AIEditor({ content, onChange, onSave }: AIEditorProps) {
   // Toggle inline styles (bold, italic, underline)
   const toggleInlineStyle = useCallback((style: string) => {
     handleEditorChange(RichUtils.toggleInlineStyle(editorState, style));
+  }, [editorState, handleEditorChange]);
+
+  // Toggle block type (headings, etc.)
+  // Get block styles for rendering
+  const getBlockStyle = useCallback((block: any) => {
+    switch (block.getType()) {
+      case 'header-one':
+        return 'text-3xl font-bold mb-4 text-gray-900';
+      case 'header-two':
+        return 'text-2xl font-bold mb-3 text-gray-900';
+      case 'header-three':
+        return 'text-xl font-bold mb-2 text-gray-900';
+      default:
+        return '';
+    }
+  }, []);
+
+  // Get current block type for toolbar highlighting
+  const getCurrentBlockType = useCallback((): string => {
+    const selection = editorState.getSelection();
+    const blockType = editorState
+      .getCurrentContent()
+      .getBlockForKey(selection.getStartKey())
+      .getType();
+    return blockType;
+  }, [editorState]);
+
+  const toggleBlockType = useCallback((blockType: string) => {
+    handleEditorChange(RichUtils.toggleBlockType(editorState, blockType));
+  }, [editorState, handleEditorChange]);
+
+  // Insert scene break
+  const insertSceneBreak = useCallback(() => {
+    const contentState = editorState.getCurrentContent();
+    const selection = editorState.getSelection();
+    
+    // Insert the scene break text
+    const newContentState = Modifier.insertText(
+      contentState,
+      selection,
+      '\n* * *\n'
+    );
+    
+    const newEditorState = EditorState.push(
+      editorState,
+      newContentState,
+      'insert-characters'
+    );
+    
+    handleEditorChange(newEditorState);
   }, [editorState, handleEditorChange]);
 
   // Save chapter
@@ -193,6 +323,57 @@ function AIEditor({ content, onChange, onSave }: AIEditorProps) {
           
           <div className="h-6 w-px bg-gray-300 mx-2" />
           
+          {/* Block formatting buttons */}
+          <button
+            type="button"
+            className={`px-3 py-1 rounded text-sm font-medium ${
+              getCurrentBlockType() === 'header-one'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            onClick={() => toggleBlockType('header-one')}
+            aria-label="Heading 1"
+          >
+            H1
+          </button>
+          
+          <button
+            type="button"
+            className={`px-3 py-1 rounded text-sm font-medium ${
+              getCurrentBlockType() === 'header-two'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            onClick={() => toggleBlockType('header-two')}
+            aria-label="Heading 2"
+          >
+            H2
+          </button>
+          
+          <button
+            type="button"
+            className={`px-3 py-1 rounded text-sm font-medium ${
+              getCurrentBlockType() === 'header-three'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            onClick={() => toggleBlockType('header-three')}
+            aria-label="Heading 3"
+          >
+            H3
+          </button>
+          
+          <button
+            type="button"
+            className="px-3 py-1 rounded text-sm font-medium bg-white text-gray-700 hover:bg-gray-50"
+            onClick={insertSceneBreak}
+            aria-label="Insert Scene Break"
+          >
+            * * *
+          </button>
+          
+          <div className="h-6 w-px bg-gray-300 mx-2" />
+          
           {/* AI Process button */}
           <button
             type="button"
@@ -242,6 +423,7 @@ function AIEditor({ content, onChange, onSave }: AIEditorProps) {
             editorState={editorState}
             onChange={handleEditorChange}
             handleKeyCommand={handleKeyCommand}
+            blockStyleFn={getBlockStyle}
             placeholder="Paste your chapter text here. The AI will preserve all formatting while making corrections..."
             spellCheck={true}
             aria-label="Chapter text editor"
@@ -272,24 +454,86 @@ function AIEditor({ content, onChange, onSave }: AIEditorProps) {
               <div key={index} className="flex items-start gap-3 p-2 bg-white rounded border">
                 <span className="text-sm font-medium text-gray-500 mt-1">
                   {correction.type === 'typo' ? '🔤' : 
-                   correction.type === 'repetition' ? '🔁' :
-                   correction.type === 'consistency' ? '📝' : '✨'}
+                   correction.type === 'spelling' ? '🔤' :
+                   correction.type === 'punctuation' ? '❓' : 
+                   correction.type === 'quotation' ? '�' : '✨'}
                 </span>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="line-through text-red-600">{correction.original}</span>
-                    {correction.suggestion && (
-                      <>
-                        <span>→</span>
-                        <span className="text-green-600 font-medium">{correction.suggestion}</span>
-                      </>
-                    )}
+                    <span>→</span>
+                    <span className="text-green-600 font-medium">{correction.corrected}</span>
                   </div>
-                  <p className="text-sm text-gray-600 mt-1">{correction.reason}</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {correction.type.charAt(0).toUpperCase() + correction.type.slice(1)} correction 
+                    (confidence: {Math.round(correction.confidence * 100)}%)
+                  </p>
                 </div>
               </div>
             ))}
           </div>
+        </div>
+      )}
+      
+      {/* Analysis Panel */}
+      {analysis && (
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg border">
+          <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+            <span>📊</span>
+            Text Analysis
+          </h3>
+          
+          {/* Statistics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{analysis.statistics.wordCount}</div>
+              <div className="text-sm text-gray-600">Words</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{analysis.statistics.sentenceCount}</div>
+              <div className="text-sm text-gray-600">Sentences</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{analysis.dialogue.count}</div>
+              <div className="text-sm text-gray-600">Dialogue Lines</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{analysis.statistics.dialogueRatio}%</div>
+              <div className="text-sm text-gray-600">Dialogue Ratio</div>
+            </div>
+          </div>
+
+          {/* Repetitions */}
+          {analysis.repetitions.length > 0 && (
+            <div className="mb-4">
+              <h4 className="font-medium mb-2">Repetitions Found ({analysis.repetitions.length})</h4>
+              <div className="space-y-1">
+                {analysis.repetitions.slice(0, 5).map((rep, idx) => (
+                  <div key={idx} className="text-sm text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                    "{rep.word}" repeated {rep.positions.length} times - {rep.reason}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Awkward Phrasing */}
+          {analysis.awkwardPhrasing.length > 0 && (
+            <div className="mb-4">
+              <h4 className="font-medium mb-2">Awkward Phrasing ({analysis.awkwardPhrasing.length})</h4>
+              <div className="space-y-2">
+                {analysis.awkwardPhrasing.map((awkward, idx) => (
+                  <div key={idx} className="p-2 bg-orange-100 rounded">
+                    <div className="text-sm text-orange-800">"{awkward.phrase}"</div>
+                    <div className="text-sm text-orange-600 mt-1">
+                      Suggestion: {awkward.suggestion}
+                    </div>
+                    <div className="text-xs text-orange-500 mt-1">{awkward.reason}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

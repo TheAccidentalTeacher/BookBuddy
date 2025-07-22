@@ -4,9 +4,15 @@ const nlp = require('compromise');
 
 class AIService {
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    this.useMockAPI = process.env.OPENAI_API_KEY === 'mock' || !process.env.OPENAI_API_KEY;
+    
+    if (!this.useMockAPI) {
+      this.openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+    } else {
+      console.log('Using mock AI responses for development');
+    }
     
     // Common words that should be ignored for repetition detection
     this.commonWords = new Set([
@@ -27,6 +33,10 @@ class AIService {
   }
 
   async correctText(text, dialogueSections = []) {
+    if (this.useMockAPI) {
+      return this.mockCorrectText(text, dialogueSections);
+    }
+    
     try {
       const prompt = `You are a professional fiction editor. Fix ONLY the most obvious errors in this text:
 
@@ -131,7 +141,68 @@ Return a JSON object with:
     return repetitions;
   }
 
+  // Extract dialogue sections from text
+  extractDialogueSections(text) {
+    const dialogues = [];
+    // Match dialogue in quotes with optional attribution
+    const dialoguePattern = /(['"])((?:(?!\1)[^\\]|\\.)*)(\1)(\s*[,.]?\s*[A-Za-z\s]+(?:said|asked|replied|whispered|shouted|muttered|exclaimed|declared|admitted|confessed|demanded|insisted|suggested|observed|remarked|announced|continued|added|concluded|interrupted|answered|responded|nodded|smiled|laughed|sighed|frowned|grimaced|shrugged|paused).*?)?/g;
+    
+    let match;
+    while ((match = dialoguePattern.exec(text)) !== null) {
+      const fullMatch = match[0];
+      const quote = match[1];
+      const dialogue = match[2];
+      const attribution = match[4] ? match[4].trim() : '';
+      
+      dialogues.push({
+        text: dialogue,
+        fullText: fullMatch,
+        attribution: attribution,
+        position: {
+          start: match.index,
+          end: match.index + fullMatch.length
+        },
+        quote: quote,
+        type: 'dialogue'
+      });
+    }
+
+    // Also catch standalone dialogue without attribution
+    const standalonePattern = /(['"])((?:(?!\1)[^\\]|\\.)*)\1/g;
+    let standaloneMatch;
+    while ((standaloneMatch = standalonePattern.exec(text)) !== null) {
+      const fullMatch = standaloneMatch[0];
+      const dialogue = standaloneMatch[2];
+      
+      // Skip if already captured by the more complex pattern
+      const alreadyCaptured = dialogues.some(d => 
+        d.position.start <= standaloneMatch.index && 
+        d.position.end >= standaloneMatch.index + fullMatch.length
+      );
+      
+      if (!alreadyCaptured && dialogue.trim().length > 0) {
+        dialogues.push({
+          text: dialogue,
+          fullText: fullMatch,
+          attribution: '',
+          position: {
+            start: standaloneMatch.index,
+            end: standaloneMatch.index + fullMatch.length
+          },
+          quote: standaloneMatch[1],
+          type: 'dialogue'
+        });
+      }
+    }
+
+    return dialogues.sort((a, b) => a.position.start - b.position.start);
+  }
+
   async detectAwkwardPhrasing(text) {
+    if (this.useMockAPI) {
+      return this.mockDetectAwkwardPhrasing(text);
+    }
+    
     try {
       const prompt = `Analyze this fiction text and identify up to 3 awkwardly worded sentences or phrases. Focus on:
 - Unclear or confusing sentence structure
@@ -324,6 +395,59 @@ Be constructive and encouraging while noting areas for improvement.`;
         tokenUsage: null,
       };
     }
+  }
+
+  // Mock AI methods for development/testing
+  mockCorrectText(text, dialogueSections = []) {
+    const corrections = [
+      {
+        original: "teh",
+        corrected: "the",
+        type: "typo",
+        position: { start: text.indexOf("teh"), end: text.indexOf("teh") + 3 },
+        confidence: 0.95
+      },
+      {
+        original: "Hello world",
+        corrected: "Hello world.",
+        type: "punctuation", 
+        position: { start: text.indexOf("Hello world"), end: text.indexOf("Hello world") + 11 },
+        confidence: 0.9
+      }
+    ].filter(c => c.position.start >= 0);
+
+    let correctedText = text;
+    corrections.reverse().forEach(correction => {
+      correctedText = correctedText.substring(0, correction.position.start) + 
+                     correction.corrected + 
+                     correctedText.substring(correction.position.end);
+    });
+
+    return {
+      correctedText,
+      corrections,
+      tokenUsage: {
+        prompt: Math.ceil(text.length / 4),
+        completion: Math.ceil(correctedText.length / 4), 
+        total: Math.ceil((text.length + correctedText.length) / 4)
+      }
+    };
+  }
+
+  async mockDetectAwkwardPhrasing(text) {
+    await new Promise(resolve => setTimeout(resolve, 100)); // Simulate API delay
+    
+    const awkwardPhrases = [
+      {
+        phrase: "very very good",
+        suggestion: "excellent", 
+        reason: "Avoid repetitive intensifiers",
+        position: { start: text.indexOf("very very good"), end: text.indexOf("very very good") + 14 },
+        confidence: 0.8
+      }
+    ].filter(p => p.position.start >= 0);
+
+    return awkwardPhrases;
   }
 }
 

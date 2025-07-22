@@ -44,25 +44,80 @@ router.post('/process-chapter', auth, async (req, res) => {
 
     const userData = userDataStore.get(userId);
     
-    // Process text with AI
-    const result = await processTextWithAI(text, userData, req.user.id);
+    // Extract dialogue sections for context-aware processing
+    const dialogueSections = aiService.extractDialogueSections(text);
     
-    // Update user data
-    result.characterNames.forEach(name => userData.characterNames.add(name));
-    result.placeNames.forEach(name => userData.placeNames.add(name));
-    userData.previousChapters.push({
-      text: text,
-      timestamp: new Date(),
-      characters: result.characterNames,
-      places: result.placeNames
+    // Run all AI processing in parallel for better performance
+    const [
+      correctionResult,
+      repetitions,
+      awkwardPhrasing,
+      extractedNames
+    ] = await Promise.all([
+      aiService.correctText(text, dialogueSections),
+      Promise.resolve(aiService.detectRepetitions(text)),
+      aiService.detectAwkwardPhrasing(text),
+      Promise.resolve(aiService.extractNames(text))
+    ]);
+
+    // Update user data with extracted names
+    extractedNames.forEach(nameObj => {
+      if (nameObj.type === 'person') {
+        userData.characterNames.add(nameObj.name);
+      } else if (nameObj.type === 'place') {
+        userData.placeNames.add(nameObj.name);
+      }
     });
 
-    res.json(result);
-    
+    // Prepare comprehensive analysis
+    const analysis = {
+      corrections: correctionResult.corrections || [],
+      repetitions: repetitions || [],
+      awkwardPhrasing: awkwardPhrasing || [],
+      dialogue: {
+        sections: dialogueSections,
+        count: dialogueSections.length,
+        averageLength: dialogueSections.length > 0 
+          ? Math.round(dialogueSections.reduce((sum, d) => sum + d.text.length, 0) / dialogueSections.length)
+          : 0
+      },
+      names: extractedNames,
+      statistics: {
+        wordCount: text.split(/\s+/).length,
+        characterCount: text.length,
+        sentenceCount: (text.match(/[.!?]+/g) || []).length,
+        paragraphCount: text.split(/\n\s*\n/).length,
+        dialogueRatio: dialogueSections.length > 0 
+          ? Math.round((dialogueSections.reduce((sum, d) => sum + d.text.length, 0) / text.length) * 100)
+          : 0
+      }
+    };
+
+    // Store chapter for future consistency checking
+    userData.previousChapters.push({
+      content: text,
+      correctedContent: correctionResult.correctedText,
+      timestamp: new Date(),
+      names: extractedNames
+    });
+
+    // Keep only last 10 chapters for memory management
+    if (userData.previousChapters.length > 10) {
+      userData.previousChapters.shift();
+    }
+
+    res.json({
+      message: 'Chapter processing completed',
+      correctedText: correctionResult.correctedText,
+      analysis,
+      tokenUsage: correctionResult.tokenUsage,
+      processingTime: Date.now()
+    });
+
   } catch (error) {
     console.error('AI processing error:', error);
-    res.status(500).json({ 
-      message: 'Failed to process text',
+    res.status(500).json({
+      message: 'AI processing failed',
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
