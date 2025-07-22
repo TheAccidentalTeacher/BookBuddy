@@ -43,6 +43,7 @@ function Home() {
       </Helmet>
 
       <div className="min-h-screen bg-gray-50">
+        {/* Clean Header */}
         <header className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -56,14 +57,18 @@ function Home() {
               <div className="flex items-center space-x-4">
                 <button
                   onClick={handleNewChapter}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white
+                     bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 >
                   ✨ New Chapter
                 </button>
                 
                 <button
                   onClick={() => setShowChapterList(!showChapterList)}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700
+                     bg-white border border-gray-300 rounded-lg hover:bg-gray-50
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
                 >
                   📚 Chapters ({chapters.length})
                 </button>
@@ -84,7 +89,8 @@ function Home() {
                     <div
                       key={chapter.id}
                       onClick={() => handleLoadChapter(chapter)}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-all"
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg
+                         hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-all"
                     >
                       <div>
                         <h3 className="font-medium text-gray-900">{chapter.title}</h3>
@@ -100,6 +106,7 @@ function Home() {
             </div>
           )}
 
+          {/* Beautiful Editor Container */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-6 border-b border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between">
